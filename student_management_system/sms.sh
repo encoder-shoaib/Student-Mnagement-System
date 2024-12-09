@@ -1,68 +1,54 @@
 #!/bin/bash
 
-# Function to display a welcome message
-show_welcome_image() {
-    clear
-    echo "Welcome to Student Management System!"
-    sleep 2
+# Ensure required files exist
+initialize_files() {
+    touch users.csv admins.csv teachers.csv students.csv courses.csv semesters.csv
 }
 
-# Function for user registration
+# Show Welcome Message
+show_welcome_image() {
+    zenity --info --text="Welcome to the Student Management System!" --title="Welcome" --width=400
+}
+
+# User Registration
 register_user() {
-    echo "Select Role to Register:"
-    echo "1. Admin"
-    echo "2. Teacher"
-    echo "3. Student"
-    read role_option
+    role=$(zenity --list --radiolist --title="Select Role" --text="Choose a role to register:" \
+        --column="Select" --column="Role" \
+        TRUE "Admin" FALSE "Teacher" FALSE "Student" --width=400 --height=300)
 
-    case $role_option in
-        1) role="admin" ;;
-        2) role="teacher" ;;
-        3) role="student" ;;
-        *) echo "Invalid choice." ; return ;;
-    esac
+    if [ -z "$role" ]; then
+        zenity --error --text="Role not selected." --width=300
+        return
+    fi
 
-    echo "Enter Name:"
-    read name
-    echo "Enter ID:"
-    read id
-    echo "Enter Email:"
-    read email
-    echo "Enter Password:"
-    read -s password
+    name=$(zenity --entry --title="Enter Name" --text="Enter your name:")
+    id=$(zenity --entry --title="Enter ID" --text="Enter your ID:")
+    email=$(zenity --entry --title="Enter Email" --text="Enter your email:")
+    password=$(zenity --password --title="Enter Password" --text="Enter a password:")
 
-    # Store user data in users.csv
+    # Store user data
     echo "$id,$name,$password,$role" >> users.csv
 
-    # Store role-specific data
     case $role in
-        admin) echo "$id,$name,$email" >> admins.csv ;;
-        teacher) echo "$id,$name,Subject,$email" >> teachers.csv ;;
-        student)
-            echo "Enter Semester:"
-            read semester
-            echo "$id,$name,$email,$semester" >> students.csv
-            ;;
+        "Admin") echo "$id,$name,$email" >> admins.csv ;;
+        "Teacher") 
+            subject=$(zenity --entry --title="Enter Subject" --text="Enter subject specialization:")
+            echo "$id,$name,$subject,$email" >> teachers.csv ;;
+        "Student")
+            semester=$(zenity --entry --title="Enter Semester" --text="Enter your semester:")
+            echo "$id,$name,$email,$semester" >> students.csv ;;
     esac
 
-    echo "Registration successful!"
+    zenity --info --text="Registration successful!" --width=300
 }
 
-# Function for user login
+# User Login
 login() {
-    echo "Enter ID:"
-    read id
-    echo "Enter Password:"
-    read -s password
+    id=$(zenity --entry --title="Enter ID" --text="Enter your ID:")
+    password=$(zenity --password --title="Enter Password" --text="Enter your password:")
 
-    # Loop through users.csv to find the user with matching ID and password
     user_found=false
     while IFS=',' read -r csv_id csv_name csv_password csv_role; do
-        # Trim spaces from csv_password and input password for comparison
-        csv_password=$(echo "$csv_password" | xargs)  # Trim spaces
-        password=$(echo "$password" | xargs)  # Trim spaces
-
-        # Compare the ID and Password
         if [[ "$csv_id" == "$id" && "$csv_password" == "$password" ]]; then
             user_found=true
             role=$csv_role
@@ -71,47 +57,34 @@ login() {
         fi
     done < users.csv
 
-    # If user is found, proceed with login
     if $user_found; then
-        echo "Login successful as $role! Welcome, $name."
-        
-        # Navigate to role-specific menu
+        zenity --info --text="Login successful as $role! Welcome, $name." --width=400
         case $role in
-            admin) admin_menu ;;
-            teacher) teacher_menu ;;
-            student) student_menu ;;
-            *) echo "Invalid role." ;;
+            "Admin") admin_menu ;;
+            "Teacher") teacher_menu ;;
+            "Student") student_menu ;;
         esac
     else
-        echo "Invalid credentials, please try again."
+        zenity --error --text="Invalid credentials. Please try again." --width=300
     fi
 }
 
 # Admin Menu
 admin_menu() {
     while true; do
-        echo "Admin Menu"
-        echo "1. Create Teacher"
-        echo "2. View Teachers"
-        echo "3. Create Semester"
-        echo "4. Create Course"
-        echo "5. View Students"
-        echo "6. Delete Teacher"
-        echo "7. Delete Student"
-        echo "8. Logout"
-        echo "Enter your choice:"
-        read choice
+        choice=$(zenity --list --radiolist --title="Admin Menu" --text="Choose an action:" \
+            --column="Select" --column="Action" \
+            TRUE "Create Teacher" FALSE "View Teachers" \
+            FALSE "Create Semester" FALSE "Create Course" \
+            FALSE "View Students" FALSE "Logout" --width=400 --height=300)
 
         case $choice in
-            1) create_teacher ;;
-            2) view_teachers ;;
-            3) create_semester ;;
-            4) create_course ;;
-            5) view_students ;;
-            6) delete_teacher ;;
-            7) delete_student ;;
-            8) break ;;
-            *) echo "Invalid choice, try again." ;;
+            "Create Teacher") create_teacher ;;
+            "View Teachers") view_teachers ;;
+            "Create Semester") create_semester ;;
+            "Create Course") create_course ;;
+            "View Students") view_students ;;
+            "Logout") break ;;
         esac
     done
 }
@@ -119,18 +92,14 @@ admin_menu() {
 # Teacher Menu
 teacher_menu() {
     while true; do
-        echo "Teacher Menu"
-        echo "1. View Students"
-        echo "2. View Courses"
-        echo "3. Logout"
-        echo "Enter your choice:"
-        read choice
+        choice=$(zenity --list --radiolist --title="Teacher Menu" --text="Choose an action:" \
+            --column="Select" --column="Action" \
+            TRUE "View Students" FALSE "View Courses" FALSE "Logout" --width=400 --height=300)
 
         case $choice in
-            1) view_students ;;
-            2) view_courses ;;
-            3) break ;;
-            *) echo "Invalid choice, try again." ;;
+            "View Students") view_students ;;
+            "View Courses") view_courses ;;
+            "Logout") break ;;
         esac
     done
 }
@@ -138,129 +107,84 @@ teacher_menu() {
 # Student Menu
 student_menu() {
     while true; do
-        echo "Student Menu"
-        echo "1. View Info"
-        echo "2. Logout"
-        echo "Enter your choice:"
-        read choice
+        choice=$(zenity --list --radiolist --title="Student Menu" --text="Choose an action:" \
+            --column="Select" --column="Action" \
+            TRUE "View Info" FALSE "Logout" --width=400 --height=300)
 
         case $choice in
-            1) search_student ;;
-            2) break ;;
-            *) echo "Invalid choice, try again." ;;
+            "View Info") search_student ;;
+            "Logout") break ;;
         esac
     done
 }
 
-# Functions for CRUD operations
-
-# Create a new teacher
+# CRUD Operations
 create_teacher() {
-    echo "Enter Teacher ID:"
-    read id
-    echo "Enter Name:"
-    read name
-    echo "Enter Subject:"
-    read subject
-    echo "Enter Email:"
-    read email
+    id=$(zenity --entry --title="Enter Teacher ID" --text="Enter Teacher ID:")
+    name=$(zenity --entry --title="Enter Name" --text="Enter Teacher Name:")
+    subject=$(zenity --entry --title="Enter Subject" --text="Enter Subject Specialization:")
+    email=$(zenity --entry --title="Enter Email" --text="Enter Email:")
     echo "$id,$name,$subject,$email" >> teachers.csv
-    echo "Teacher added successfully!"
+    zenity --info --text="Teacher added successfully!" --width=300
 }
 
-# View all teachers
 view_teachers() {
-    cat teachers.csv
+    zenity --text-info --title="Teachers List" --filename=teachers.csv --width=600 --height=400
 }
 
-# Create a new semester
 create_semester() {
-    echo "Enter Semester ID:"
-    read id
-    echo "Enter Name:"
-    read name
-    echo "Enter Start Date (YYYY-MM-DD):"
-    read start_date
-    echo "Enter End Date (YYYY-MM-DD):"
-    read end_date
+    id=$(zenity --entry --title="Enter Semester ID" --text="Enter Semester ID:")
+    name=$(zenity --entry --title="Enter Semester Name" --text="Enter Semester Name:")
+    start_date=$(zenity --entry --title="Enter Start Date" --text="Enter Start Date (YYYY-MM-DD):")
+    end_date=$(zenity --entry --title="Enter End Date" --text="Enter End Date (YYYY-MM-DD):")
     echo "$id,$name,$start_date,$end_date" >> semesters.csv
-    echo "Semester added successfully!"
+    zenity --info --text="Semester added successfully!" --width=300
 }
 
-# Create a new course
 create_course() {
-    echo "Enter Course ID:"
-    read id
-    echo "Enter Course Name:"
-    read course_name
-    echo "Enter Teacher ID:"
-    read teacher_id
-    echo "$id,$course_name,$teacher_id" >> courses.csv
-    echo "Course added successfully!"
+    id=$(zenity --entry --title="Enter Course ID" --text="Enter Course ID:")
+    name=$(zenity --entry --title="Enter Course Name" --text="Enter Course Name:")
+    teacher_id=$(zenity --entry --title="Enter Teacher ID" --text="Enter Teacher ID:")
+    echo "$id,$name,$teacher_id" >> courses.csv
+    zenity --info --text="Course added successfully!" --width=300
 }
 
-# View all students
 view_students() {
-    cat students.csv
+    zenity --text-info --title="Students List" --filename=students.csv --width=600 --height=400
 }
 
-# View all courses
 view_courses() {
-    cat courses.csv
+    zenity --text-info --title="Courses List" --filename=courses.csv --width=600 --height=400
 }
 
-# Search for a student
 search_student() {
-    echo "Enter Student ID:"
-    read student_id
+    student_id=$(zenity --entry --title="Search Student" --text="Enter Student ID:")
     student_info=$(grep "$student_id" students.csv)
-
     if [ -n "$student_info" ]; then
-        echo "Student Info: $student_info"
+        zenity --info --title="Student Info" --text="Student Details:\n$student_info" --width=400
     else
-        echo "Student not found."
+        zenity --error --text="Student not found!" --width=300
     fi
 }
 
-# Delete a teacher from teachers.csv
-delete_teacher() {
-    echo "Enter Teacher ID to delete:"
-    read teacher_id
-    temp_file=$(mktemp)
-
-    # Remove teacher from teachers.csv
-    grep -v "^$teacher_id," teachers.csv > "$temp_file" && mv "$temp_file" teachers.csv
-    echo "Teacher deleted successfully!"
-}
-
-# Delete a student from students.csv
-delete_student() {
-    echo "Enter Student ID to delete:"
-    read student_id
-    temp_file=$(mktemp)
-
-    # Remove student from students.csv
-    grep -v "^$student_id," students.csv > "$temp_file" && mv "$temp_file" students.csv
-    echo "Student deleted successfully!"
-}
-
-# Show the main menu and allow the user to choose actions
-show_menu() {
-    echo "Main Menu"
-    echo "1. Register"
-    echo "2. Login"
-    echo "3. Exit"
-    read choice
+# Main Menu
+main_menu() {
+    choice=$(zenity --list --radiolist --title="Main Menu" --text="Choose an option:" \
+        --column="Select" --column="Action" \
+        TRUE "Register" FALSE "Login" FALSE "Exit" --width=400 --height=300)
 
     case $choice in
-        1) register_user ;;
-        2) login ;;
-        3) exit 0 ;;
-        *) echo "Invalid choice, try again." ;;
+        "Register") register_user ;;
+        "Login") login ;;
+        "Exit") exit 0 ;;
     esac
 }
 
-# Loop to keep the menu running until the user chooses to exit
+# Initialize required files
+initialize_files
+
+# Main Loop
+show_welcome_image
 while true; do
-    show_menu
+    main_menu
 done
